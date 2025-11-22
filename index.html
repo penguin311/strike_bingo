@@ -56,8 +56,8 @@
     /* ===== 물리 효과로 돌아다니는 s.png (200px) ===== */
     .floating {
       position: fixed;
-      width: 200px;
-      height: 200px;
+      width: 50px;
+      height: 50px;
       background: url("s.png") no-repeat center/contain;
       pointer-events: none;
       z-index: 0;
@@ -286,9 +286,9 @@
   <script>
     /* ===== 물리 효과로 움직이는 s.png (충돌 + 벽 바운스), 세로 20개 / 가로 8개 ===== */
 
-    const PORTRAIT_COUNT = 8;
-    const LANDSCAPE_COUNT = 8;
-    const SIZE = 200;          // 이미지 크기(px)
+    const PORTRAIT_COUNT = 10;
+    const LANDSCAPE_COUNT = 10;
+    const SIZE = 50;          // 이미지 크기(px)
     const RADIUS = SIZE / 2;
     const SPEED = 1.5;         // 기본 속도 (보통)
     const MAX_SPEED = 4;       // 최대 속도
@@ -741,5 +741,6 @@
   </script>
 </body>
 </html>
+
 
 
