@@ -45,33 +45,36 @@
       color: var(--accent);
     }
 
+    /* 표 가로 길이를 자동으로, 가운데 정렬 */
     table {
       border-collapse: collapse;
-      width: 100%;
       margin-top: 10px;
-      table-layout: fixed; /* 칸 고정 크기 */
+      margin-left: auto;
+      margin-right: auto;
     }
 
     th, td {
       border: 1px solid #ccc;
       text-align: center;
-      padding: 4px;
       font-size: 14px;
     }
 
     th {
       background: #e4edf5;
       font-weight: 600;
-      height: 40px; /* 헤더도 높이 맞춤 */
+      height: 40px;
+      padding: 4px 6px;
     }
 
-    /* 실제 스트라이크 표시 칸: 정사각형 */
+    /* 스트라이크 칸: 정확히 정사각형 40×40 */
     .frame-cell {
       cursor: pointer;
       width: 40px;
       height: 40px;
+      padding: 0;
       user-select: none;
       font-size: 18px;
+      line-height: 40px;  /* 세로 중앙 정렬 */
     }
 
     .frame-cell:hover {
@@ -85,13 +88,14 @@
       font-size: 20px;
     }
 
-    /* 선수 이름 칸은 따로 */
+    /* 선수 이름 칸 */
     .player-label {
       background: #f8f9fb;
       font-weight: 600;
       width: 90px;
       cursor: default;
       height: 40px;
+      padding: 4px 6px;
       font-size: 16px;
     }
 
@@ -385,7 +389,7 @@
 
       // 왼쪽 아래쪽에서 시작
       for (let r = 0; r < players; r++) scan(r, 0);
-      // 아래쪽에서 시작 (0열은 이미 했으니 생략, 대신 위쪽 오른쪽 부분)
+      // 아래쪽에서 시작 (0열은 이미 했으니 1부터)
       for (let c = 1; c < frames; c++) scan(players - 1, c);
 
       return count;
