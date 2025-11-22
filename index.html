@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>스트라이크 빙고 카운터</title>
+  <style>
+    :root {
+      --bg-color: #f0f4f8;
+      --card-bg: #ffffff;
+      --text-color: #333333;
+      --accent: #0078d4;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--bg-color);
+      color: var(--text-color);
+    }
+
+    h1 {
+      text-align: center;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+
+    .layout {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1.1fr 1.2fr;
+      gap: 20px;
+      align-items: flex-start;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      font-size: 20px;
+      color: var(--accent);
+    }
+
+    input[type="file"] {
+      width: 100%;
+      padding: 8px;
+    }
+
+    .preview-wrap {
+      margin-top: 10px;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid #ddd;
+      background: #000;
+      max-height: 420px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #preview {
+      max-width: 100%;
+      max-height: 400px;
+      display: block;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      text-align: center;
+      padding: 6px;
+    }
+
+    th {
+      background: #e4edf5;
+      font-weight: 600;
+    }
+
+    td.strike {
+      background: #ffe7aa;
+      color: #d35400;
+      font-weight: 700;
+      font-size: 20px;
+    }
+
+    td {
+      cursor: pointer;
+      min-width: 32px;
+      height: 32px;
+      user-select: none;
+      font-size: 18px;
+    }
+
+    td:hover {
+      background: #f3f6fb;
+    }
+
+    .player-label {
+      background: #f8f9fb;
+      font-weight: 600;
+      width: 90px;
+    }
+
+    .info {
+      font-size: 14px;
+      color: #555;
+      line-height: 1.5;
+    }
+
+    .results {
+      margin-top: 12px;
+      padding: 10px;
+      border-radius: 6px;
+      background: #f5f9ff;
+      border: 1px solid #d0e2ff;
+      font-size: 15px;
+    }
+
+    .results span.num {
+      font-weight: 700;
+      color: #d35400;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>스트라이크 빙고 카운터</h1>
+
+  <div class="layout">
+    <!-- 왼쪽: 사진 업로드 & 미리보기 -->
+    <div class="card">
+      <h2>1. 점수판 사진 불러오기 (참고용)</h2>
+      <p class="info">
+        점수판 사진을 불러와서 오른쪽 표에 스트라이크(X)가 나온 프레임을 직접 클릭해서 표시하세요.
+      </p>
+      <input type="file" accept="image/*" id="imageInput">
+      <div class="preview-wrap">
+        <img id="preview" alt="점수판 미리보기">
+      </div>
+    </div>
+
+    <!-- 오른쪽: 빙고 계산기 -->
+    <div class="card">
+      <h2>2. 스트라이크 표시 & 빙고 계산</h2>
+      <p class="info">
+        ▼ 표의 칸을 클릭하면 <b>X</b>(스트라이크)가 켜졌다 꺼집니다.<br>
+        가로/세로/대각선으로 스트라이크가 <b>3개 연속</b> 이어지면 1빙고로 계산합니다.
+      </p>
+
+      <div>
+        <label>
+          선수(줄) 수:
+          <input type="number" id="playerCountInput" value="4" min="1" max="10" style="width:60px;">
+        </label>
+        &nbsp;&nbsp;
+        <label>
+          프레임(열) 수:
+          <input type="number" id="frameCountInput" value="10" min="3" max="20" style="width:60px;">
+        </label>
+        <button id="applySizeBtn">표 크기 변경</button>
+      </div>
+
+      <table id="strikeTable"></table>
+
+      <div class="results" id="resultsBox">
+        가로 빙고: <span class="num" id="hCount">0</span> 개<br>
+        세로 빙고: <span class="num" id="vCount">0</span> 개<br>
+        대각선(↘) 빙고: <span class="num" id="d1Count">0</span> 개<br>
+        대각선(↗) 빙고: <span class="num" id="d2Count">0</span> 개<br>
+        <hr>
+        전체 빙고 합계: <span class="num" id="totalCount">0</span> 개
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ===== 1. 이미지 미리보기 ===== */
+    const imageInput = document.getElementById('imageInput');
+    const preview = document.getElementById('preview');
+
+    imageInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      preview.src = url;
+    });
+
+    /* ===== 2. 스트라이크 표 생성 ===== */
+
+    const table = document.getElementById('strikeTable');
+    const playerCountInput = document.getElementById('playerCountInput');
+    const frameCountInput = document.getElementById('frameCountInput');
+    const applySizeBtn = document.getElementById('applySizeBtn');
+
+    let players = 4;
+    let frames = 10;
+    // strikeData[row][col] = true/false
+    let strikeData = [];
+
+    function initStrikeData() {
+      strikeData = Array.from({ length: players }, () =>
+        Array.from({ length: frames }, () => false)
+      );
+    }
+
+    function buildTable() {
+      table.innerHTML = '';
+
+      const theadRow = document.createElement('tr');
+      const cornerTh = document.createElement('th');
+      cornerTh.textContent = '선수 / 프레임';
+      theadRow.appendChild(cornerTh);
+
+      for (let c = 0; c < frames; c++) {
+        const th = document.createElement('th');
+        th.textContent = c + 1;
+        theadRow.appendChild(th);
+      }
+      table.appendChild(theadRow);
+
+      for (let r = 0; r < players; r++) {
+        const tr = document.createElement('tr');
+
+        const nameTd = document.createElement('td');
+        nameTd.textContent = `P${r + 1}`;
+        nameTd.className = 'player-label';
+        tr.appendChild(nameTd);
+
+        for (let c = 0; c < frames; c++) {
+          const td = document.createElement('td');
+          td.dataset.row = r;
+          td.dataset.col = c;
+          td.addEventListener('click', onCellClick);
+          tr.appendChild(td);
+        }
+
+        table.appendChild(tr);
+      }
+
+      refreshTableView();
+      countAndDisplayBingos();
+    }
+
+    function onCellClick(e) {
+      const td = e.currentTarget;
+      const r = parseInt(td.dataset.row, 10);
+      const c = parseInt(td.dataset.col, 10);
+
+      strikeData[r][c] = !strikeData[r][c];
+      refreshTableView();
+      countAndDisplayBingos();
+    }
+
+    function refreshTableView() {
+      for (let r = 0; r < players; r++) {
+        for (let c = 0; c < frames; c++) {
+          const td = table.querySelector(`td[data-row="${r}"][data-col="${c}"]`);
+          if (!td) continue;
+          if (strikeData[r][c]) {
+            td.classList.add('strike');
+            td.textContent = 'X';
+          } else {
+            td.classList.remove('strike');
+            td.textContent = '';
+          }
+        }
+      }
+    }
+
+    applySizeBtn.addEventListener('click', () => {
+      let p = parseInt(playerCountInput.value, 10);
+      let f = parseInt(frameCountInput.value, 10);
+      if (isNaN(p) || p < 1) p = 1;
+      if (isNaN(f) || f < 3) f = 3;
+      if (p > 10) p = 10;
+      if (f > 20) f = 20;
+      players = p;
+      frames = f;
+      initStrikeData();
+      buildTable();
+    });
+
+    /* ===== 3. 빙고 계산 ===== */
+
+    const hCountSpan = document.getElementById('hCount');
+    const vCountSpan = document.getElementById('vCount');
+    const d1CountSpan = document.getElementById('d1Count');
+    const d2CountSpan = document.getElementById('d2Count');
+    const totalCountSpan = document.getElementById('totalCount');
+
+    function countAndDisplayBingos() {
+      const h = countHorizontal();
+      const v = countVertical();
+      const d1 = countDiagDownRight();
+      const d2 = countDiagUpRight();
+      const total = h + v + d1 + d2;
+
+      hCountSpan.textContent = h;
+      vCountSpan.textContent = v;
+      d1CountSpan.textContent = d1;
+      d2CountSpan.textContent = d2;
+      totalCountSpan.textContent = total;
+    }
+
+    // 가로 3연속
+    function countHorizontal() {
+      let count = 0;
+      for (let r = 0; r < players; r++) {
+        for (let c = 0; c <= frames - 3; c++) {
+          if (strikeData[r][c] && strikeData[r][c + 1] && strikeData[r][c + 2]) {
+            count++;
+          }
+        }
+      }
+      return count;
+    }
+
+    // 세로 3연속
+    function countVertical() {
+      let count = 0;
+      for (let c = 0; c < frames; c++) {
+        for (let r = 0; r <= players - 3; r++) {
+          if (strikeData[r][c] && strikeData[r + 1][c] && strikeData[r + 2][c]) {
+            count++;
+          }
+        }
+      }
+      return count;
+    }
+
+    // 대각선 ↘ 3연속
+    function countDiagDownRight() {
+      let count = 0;
+      for (let r = 0; r <= players - 3; r++) {
+        for (let c = 0; c <= frames - 3; c++) {
+          if (
+            strikeData[r][c] &&
+            strikeData[r + 1][c + 1] &&
+            strikeData[r + 2][c + 2]
+          ) {
+            count++;
+          }
+        }
+      }
+      return count;
+    }
+
+    // 대각선 ↗ 3연속
+    function countDiagUpRight() {
+      let count = 0;
+      for (let r = 2; r < players; r++) {
+        for (let c = 0; c <= frames - 3; c++) {
+          if (
+            strikeData[r][c] &&
+            strikeData[r - 1][c + 1] &&
+            strikeData[r - 2][c + 2]
+          ) {
+            count++;
+          }
+        }
+      }
+      return count;
+    }
+
+    // 초기 표 세팅
+    initStrikeData();
+    buildTable();
+  </script>
+</body>
+</html>
