@@ -45,7 +45,7 @@
       color: var(--accent);
     }
 
-    /* 표 가로 길이를 자동으로, 가운데 정렬 */
+    /* 표: 가로 길이 자동, 가운데 정렬 */
     table {
       border-collapse: collapse;
       margin-top: 10px;
@@ -81,11 +81,17 @@
       background: #f3f6fb;
     }
 
+    /* X가 있는 칸 */
     td.strike {
       background: #ffe7aa;
       color: #d35400;
       font-weight: 700;
       font-size: 20px;
+    }
+
+    /* 빙고에 포함된 칸 표시 */
+    td.bingo {
+      box-shadow: 0 0 0 3px rgba(255, 0, 0, 0.7) inset;
     }
 
     /* 선수 이름 칸 */
@@ -151,7 +157,8 @@
         ▷ 가로 / 세로 / 대각선으로 스트라이크가 <b>3개 연속</b> 이어지면 1빙고로 계산합니다.<br>
         ▷ 같은 줄에서 연속 스트라이크가 4개 이상이어도, <b>겹치지 않게</b> 3개당 1빙고만 셉니다.<br>
         &nbsp;&nbsp;예) XXXX → 1빙고, XXXXXX → 2빙고<br>
-        ▷ 10프레임은 최대 3번까지 투구할 수 있으므로 <b>10-1, 10-2, 10-3</b>으로 나누어 표시합니다.
+        ▷ 10프레임은 최대 3번까지 투구할 수 있으므로 <b>10-1, 10-2, 10-3</b>으로 나누어 표시합니다.<br>
+        ▷ 빙고에 포함된 칸은 <b>빨간 테두리</b>로 표시됩니다.
       </p>
 
       <div style="margin-bottom:8px;">
@@ -187,9 +194,16 @@
     let players = 4;
     let frames = TOTAL_COLS;
     let strikeData = [];
+    let bingoMap = []; // [r][c]가 true면 해당 칸이 빙고에 포함
 
     function initStrikeData() {
       strikeData = Array.from({ length: players }, () =>
+        Array.from({ length: frames }, () => false)
+      );
+    }
+
+    function initBingoMap() {
+      bingoMap = Array.from({ length: players }, () =>
         Array.from({ length: frames }, () => false)
       );
     }
@@ -254,12 +268,16 @@
         for (let c = 0; c < frames; c++) {
           const td = table.querySelector(`td[data-row="${r}"][data-col="${c}"]`);
           if (!td) continue;
+
+          td.classList.remove('strike', 'bingo');
+          td.textContent = '';
+
           if (strikeData[r][c]) {
             td.classList.add('strike');
             td.textContent = 'X';
-          } else {
-            td.classList.remove('strike');
-            td.textContent = '';
+          }
+          if (bingoMap[r][c]) {
+            td.classList.add('bingo');
           }
         }
       }
@@ -271,6 +289,7 @@
       if (p > 10) p = 10;
       players = p;
       initStrikeData();
+      initBingoMap();
       buildTable();
     });
 
@@ -282,11 +301,143 @@
     const d2CountSpan  = document.getElementById('d2Count');
     const totalCountSpan = document.getElementById('totalCount');
 
+    // 한 라인(cells: {r,c} 배열)에 대해
+    // 연속된 X(run)들을 찾고, 길이를 기준으로 floor(len/3)만큼 빙고 카운트
+    // mark=true면 그 칸들을 bingoMap에 표시
+    function processLine(cells, mark) {
+      let count = 0;
+      let run = [];
+
+      for (let i = 0; i <= cells.length; i++) {
+        const inRange = i < cells.length;
+        const cell = inRange ? cells[i] : null;
+        const isStrike = inRange ? strikeData[cell.r][cell.c] : false;
+
+        if (isStrike) {
+          run.push(cell);
+        } else {
+          if (run.length > 0) {
+            const k = Math.floor(run.length / 3);
+            count += k;
+            if (mark && k > 0) {
+              const upto = k * 3; // 앞에서부터 3개씩 k묶음만 사용
+              for (let j = 0; j < upto; j++) {
+                const { r, c } = run[j];
+                bingoMap[r][c] = true;
+              }
+            }
+            run = [];
+          }
+        }
+      }
+
+      return count;
+    }
+
+    function countHorizontal(mark) {
+      let count = 0;
+      for (let r = 0; r < players; r++) {
+        const cells = [];
+        for (let c = 0; c < frames; c++) {
+          cells.push({ r, c });
+        }
+        count += processLine(cells, mark);
+      }
+      return count;
+    }
+
+    function countVertical(mark) {
+      let count = 0;
+      for (let c = 0; c < frames; c++) {
+        const cells = [];
+        for (let r = 0; r < players; r++) {
+          cells.push({ r, c });
+        }
+        count += processLine(cells, mark);
+      }
+      return count;
+    }
+
+    function countDiagDownRight(mark) {
+      let count = 0;
+
+      // 왼쪽 가장자리에서 시작
+      for (let startR = 0; startR < players; startR++) {
+        const cells = [];
+        let r = startR;
+        let c = 0;
+        while (r < players && c < frames) {
+          cells.push({ r, c });
+          r++;
+          c++;
+        }
+        if (cells.length >= 3) {
+          count += processLine(cells, mark);
+        }
+      }
+
+      // 위쪽에서 시작 (0열은 이미 했으니 1부터)
+      for (let startC = 1; startC < frames; startC++) {
+        const cells = [];
+        let r = 0;
+        let c = startC;
+        while (r < players && c < frames) {
+          cells.push({ r, c });
+          r++;
+          c++;
+        }
+        if (cells.length >= 3) {
+          count += processLine(cells, mark);
+        }
+      }
+
+      return count;
+    }
+
+    function countDiagUpRight(mark) {
+      let count = 0;
+
+      // 왼쪽 아래에서 시작
+      for (let startR = 0; startR < players; startR++) {
+        const cells = [];
+        let r = startR;
+        let c = 0;
+        while (r >= 0 && c < frames) {
+          cells.push({ r, c });
+          r--;
+          c++;
+        }
+        if (cells.length >= 3) {
+          count += processLine(cells, mark);
+        }
+      }
+
+      // 아래쪽에서 시작 (0열은 이미 했으니 1부터)
+      for (let startC = 1; startC < frames; startC++) {
+        const cells = [];
+        let r = players - 1;
+        let c = startC;
+        while (r >= 0 && c < frames) {
+          cells.push({ r, c });
+          r--;
+          c++;
+        }
+        if (cells.length >= 3) {
+          count += processLine(cells, mark);
+        }
+      }
+
+      return count;
+    }
+
     function countAndDisplayBingos() {
-      const h  = countHorizontal();
-      const v  = countVertical();
-      const d1 = countDiagDownRight();
-      const d2 = countDiagUpRight();
+      // 빙고 표시 배열 초기화
+      initBingoMap();
+
+      const h  = countHorizontal(true);
+      const v  = countVertical(true);
+      const d1 = countDiagDownRight(true);
+      const d2 = countDiagUpRight(true);
       const total = h + v + d1 + d2;
 
       hCountSpan.textContent  = h;
@@ -294,109 +445,14 @@
       d1CountSpan.textContent = d1;
       d2CountSpan.textContent = d2;
       totalCountSpan.textContent = total;
-    }
 
-    // 연속된 X 길이를 세어서 floor(L / 3)만큼 빙고 추가
-    function addRunToCount(runLen) {
-      return Math.floor(runLen / 3);
-    }
-
-    // 가로
-    function countHorizontal() {
-      let count = 0;
-      for (let r = 0; r < players; r++) {
-        let run = 0;
-        for (let c = 0; c < frames; c++) {
-          if (strikeData[r][c]) {
-            run++;
-          } else {
-            count += addRunToCount(run);
-            run = 0;
-          }
-        }
-        count += addRunToCount(run);
-      }
-      return count;
-    }
-
-    // 세로
-    function countVertical() {
-      let count = 0;
-      for (let c = 0; c < frames; c++) {
-        let run = 0;
-        for (let r = 0; r < players; r++) {
-          if (strikeData[r][c]) {
-            run++;
-          } else {
-            count += addRunToCount(run);
-            run = 0;
-          }
-        }
-        count += addRunToCount(run);
-      }
-      return count;
-    }
-
-    // 대각선 ↘ (왼쪽 위 → 오른쪽 아래)
-    function countDiagDownRight() {
-      let count = 0;
-
-      function scan(startR, startC) {
-        let r = startR;
-        let c = startC;
-        let run = 0;
-        while (r < players && c < frames) {
-          if (strikeData[r][c]) {
-            run++;
-          } else {
-            count += addRunToCount(run);
-            run = 0;
-          }
-          r++;
-          c++;
-        }
-        count += addRunToCount(run);
-      }
-
-      // 왼쪽 가장자리에서 시작
-      for (let r = 0; r < players; r++) scan(r, 0);
-      // 위쪽에서 시작 (0열은 이미 했으니 1부터)
-      for (let c = 1; c < frames; c++) scan(0, c);
-
-      return count;
-    }
-
-    // 대각선 ↗ (왼쪽 아래 → 오른쪽 위)
-    function countDiagUpRight() {
-      let count = 0;
-
-      function scan(startR, startC) {
-        let r = startR;
-        let c = startC;
-        let run = 0;
-        while (r >= 0 && c < frames) {
-          if (strikeData[r][c]) {
-            run++;
-          } else {
-            count += addRunToCount(run);
-            run = 0;
-          }
-          r--;
-          c++;
-        }
-        count += addRunToCount(run);
-      }
-
-      // 왼쪽 아래쪽에서 시작
-      for (let r = 0; r < players; r++) scan(r, 0);
-      // 아래쪽에서 시작 (0열은 이미 했으니 1부터)
-      for (let c = 1; c < frames; c++) scan(players - 1, c);
-
-      return count;
+      // 빙고 반영해서 화면 업데이트
+      refreshTableView();
     }
 
     // 초기 세팅
     initStrikeData();
+    initBingoMap();
     buildTable();
   </script>
 </body>
