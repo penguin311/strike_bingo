@@ -134,3 +134,221 @@
 
   <div class="layout">
     <div class="card">
+      <h2>스트라이크 표시 & 빙고 계산</h2>
+      <p class="info">
+        ▷ 표의 칸을 클릭하면 <b>X</b>(스트라이크)가 켜졌다 꺼집니다.<br>
+        ▷ 가로 / 세로 / 대각선으로 스트라이크가 <b>3개 연속</b> 이어지면 1빙고로 계산합니다.<br>
+        ▷ 10프레임은 최대 3번까지 투구할 수 있으므로 <b>10-1, 10-2, 10-3</b>으로 나누어 표시합니다.
+      </p>
+
+      <div style="margin-bottom:8px;">
+        <label>
+          선수(줄) 수:
+          <input type="number" id="playerCountInput" value="4" min="1" max="10" style="width:60px;">
+        </label>
+        <button id="applySizeBtn">선수 수 변경</button>
+      </div>
+
+      <table id="strikeTable"></table>
+
+      <div class="results">
+        가로 빙고: <span class="num" id="hCount">0</span> 개<br>
+        세로 빙고: <span class="num" id="vCount">0</span> 개<br>
+        대각선(↘) 빙고: <span class="num" id="d1Count">0</span> 개<br>
+        대각선(↗) 빙고: <span class="num" id="d2Count">0</span> 개<br>
+        <hr>
+        전체 빙고 합계: <span class="num" id="totalCount">0</span> 개
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== 설정: 프레임 구조 =====
+    // 1~9프레임 + 10프레임(3투구) = 총 12칸으로 처리
+    const TOTAL_COLS = 12;  // 0~8: 1~9프레임, 9~11: 10-1,10-2,10-3
+
+    const table = document.getElementById('strikeTable');
+    const playerCountInput = document.getElementById('playerCountInput');
+    const applySizeBtn = document.getElementById('applySizeBtn');
+
+    let players = 4;
+    let frames = TOTAL_COLS; // 내부적으로는 12칸
+    let strikeData = [];
+
+    function initStrikeData() {
+      strikeData = Array.from({ length: players }, () =>
+        Array.from({ length: frames }, () => false)
+      );
+    }
+
+    function headerLabel(colIndex) {
+      // 0~8  -> 1~9
+      // 9    -> 10-1
+      // 10   -> 10-2
+      // 11   -> 10-3
+      if (colIndex <= 8) return (colIndex + 1).toString();
+      const n = colIndex - 8; // 1,2,3
+      return '10-' + n;
+    }
+
+    function buildTable() {
+      table.innerHTML = '';
+
+      const theadRow = document.createElement('tr');
+      const cornerTh = document.createElement('th');
+      cornerTh.textContent = '선수 / 프레임';
+      theadRow.appendChild(cornerTh);
+
+      for (let c = 0; c < frames; c++) {
+        const th = document.createElement('th');
+        th.textContent = headerLabel(c);
+        theadRow.appendChild(th);
+      }
+      table.appendChild(theadRow);
+
+      for (let r = 0; r < players; r++) {
+        const tr = document.createElement('tr');
+
+        const nameTd = document.createElement('td');
+        nameTd.textContent = `P${r + 1}`;
+        nameTd.className = 'player-label';
+        tr.appendChild(nameTd);
+
+        for (let c = 0; c < frames; c++) {
+          const td = document.createElement('td');
+          td.dataset.row = r;
+          td.dataset.col = c;
+          td.addEventListener('click', onCellClick);
+          tr.appendChild(td);
+        }
+
+        table.appendChild(tr);
+      }
+
+      refreshTableView();
+      countAndDisplayBingos();
+    }
+
+    function onCellClick(e) {
+      const td = e.currentTarget;
+      const r = parseInt(td.dataset.row, 10);
+      const c = parseInt(td.dataset.col, 10);
+
+      strikeData[r][c] = !strikeData[r][c];
+      refreshTableView();
+      countAndDisplayBingos();
+    }
+
+    function refreshTableView() {
+      for (let r = 0; r < players; r++) {
+        for (let c = 0; c < frames; c++) {
+          const td = table.querySelector(`td[data-row="${r}"][data-col="${c}"]`);
+          if (!td) continue;
+          if (strikeData[r][c]) {
+            td.classList.add('strike');
+            td.textContent = 'X';
+          } else {
+            td.classList.remove('strike');
+            td.textContent = '';
+          }
+        }
+      }
+    }
+
+    applySizeBtn.addEventListener('click', () => {
+      let p = parseInt(playerCountInput.value, 10);
+      if (isNaN(p) || p < 1) p = 1;
+      if (p > 10) p = 10;
+      players = p;
+      initStrikeData();
+      buildTable();
+    });
+
+    // ===== 빙고 계산 =====
+
+    const hCountSpan = document.getElementById('hCount');
+    const vCountSpan = document.getElementById('vCount');
+    const d1CountSpan = document.getElementById('d1Count');
+    const d2CountSpan = document.getElementById('d2Count');
+    const totalCountSpan = document.getElementById('totalCount');
+
+    function countAndDisplayBingos() {
+      const h = countHorizontal();
+      const v = countVertical();
+      const d1 = countDiagDownRight();
+      const d2 = countDiagUpRight();
+      const total = h + v + d1 + d2;
+
+      hCountSpan.textContent = h;
+      vCountSpan.textContent = v;
+      d1CountSpan.textContent = d1;
+      d2CountSpan.textContent = d2;
+      totalCountSpan.textContent = total;
+    }
+
+    // 가로 3연속
+    function countHorizontal() {
+      let count = 0;
+      for (let r = 0; r < players; r++) {
+        for (let c = 0; c <= frames - 3; c++) {
+          if (strikeData[r][c] && strikeData[r][c + 1] && strikeData[r][c + 2]) {
+            count++;
+          }
+        }
+      }
+      return count;
+    }
+
+    // 세로 3연속
+    function countVertical() {
+      let count = 0;
+      for (let c = 0; c < frames; c++) {
+        for (let r = 0; r <= players - 3; r++) {
+          if (strikeData[r][c] && strikeData[r + 1][c] && strikeData[r + 2][c]) {
+            count++;
+          }
+        }
+      }
+      return count;
+    }
+
+    // 대각선 ↘ 3연속
+    function countDiagDownRight() {
+      let count = 0;
+      for (let r = 0; r <= players - 3; r++) {
+        for (let c = 0; c <= frames - 3; c++) {
+          if (
+            strikeData[r][c] &&
+            strikeData[r + 1][c + 1] &&
+            strikeData[r + 2][c + 2]
+          ) {
+            count++;
+          }
+        }
+      }
+      return count;
+    }
+
+    // 대각선 ↗ 3연속
+    function countDiagUpRight() {
+      let count = 0;
+      for (let r = 2; r < players; r++) {
+        for (let c = 0; c <= frames - 3; c++) {
+          if (
+            strikeData[r][c] &&
+            strikeData[r - 1][c + 1] &&
+            strikeData[r - 2][c + 2]
+          ) {
+            count++;
+          }
+        }
+      }
+      return count;
+    }
+
+    // 초기 표 세팅
+    initStrikeData();
+    buildTable();
+  </script>
+</body>
+</html>
