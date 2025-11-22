@@ -29,6 +29,7 @@
       margin-bottom: 10px;
       position: relative;
       z-index: 1;
+      font-size: 32px;
     }
 
     .layout {
@@ -51,7 +52,7 @@
       color: var(--accent);
     }
 
-    /* ===== 배경에서 돌아다니는 s.png ===== */
+    /* ===== 물리 효과로 돌아다니는 s.png (200px) ===== */
     .floating {
       position: fixed;
       width: 200px;
@@ -59,15 +60,58 @@
       background: url("s.png") no-repeat center/contain;
       pointer-events: none;
       z-index: 0;
-      transition: top 10s linear, left 10s linear; /* 위치 바뀔 때 부드럽게 이동 */
     }
 
-    /* 표: 가로 길이 자동, 가운데 정렬 */
+    .info {
+      font-size: 14px;
+      color: #555;
+      line-height: 1.5;
+    }
+
+    .controls {
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .controls label {
+      font-size: 14px;
+    }
+
+    button {
+      padding: 6px 10px;
+      border-radius: 4px;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #005a9c;
+    }
+
+    input[type="number"] {
+      padding: 4px 6px;
+      font-size: 14px;
+      width: 60px;
+    }
+
+    /* ===== 표 영역: 모바일에서 가로 스크롤 허용 ===== */
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+    }
+
     table {
       border-collapse: collapse;
       margin-top: 10px;
       margin-left: auto;
       margin-right: auto;
+      white-space: nowrap;
     }
 
     th, td {
@@ -83,7 +127,7 @@
       padding: 4px 6px;
     }
 
-    /* 스트라이크 칸: 정확히 정사각형 40×40 */
+    /* 스트라이크 칸: 기본 40×40 정사각형 */
     .frame-cell {
       cursor: pointer;
       width: 40px;
@@ -98,7 +142,6 @@
       background: #f3f6fb;
     }
 
-    /* X가 있는 칸 */
     td.strike {
       background: #ffe7aa;
       color: #d35400;
@@ -106,12 +149,10 @@
       font-size: 20px;
     }
 
-    /* 빙고에 포함된 칸 표시 */
     td.bingo {
       box-shadow: 0 0 0 3px rgba(255, 0, 0, 0.7) inset;
     }
 
-    /* 선수 이름 칸 */
     .player-label {
       background: #f8f9fb;
       font-weight: 600;
@@ -120,12 +161,7 @@
       height: 40px;
       padding: 4px 6px;
       font-size: 16px;
-    }
-
-    .info {
-      font-size: 14px;
-      color: #555;
-      line-height: 1.5;
+      white-space: nowrap;
     }
 
     .results {
@@ -142,24 +178,61 @@
       color: #d35400;
     }
 
-    button {
-      padding: 6px 10px;
-      border-radius: 4px;
-      border: none;
-      background: var(--accent);
-      color: #fff;
-      font-size: 14px;
-      cursor: pointer;
-      margin-left: 6px;
-    }
+    /* ===== 모바일 대응 ===== */
+    @media (max-width: 600px) {
+      body {
+        padding: 10px;
+      }
 
-    button:hover {
-      background: #005a9c;
-    }
+      h1 {
+        font-size: 24px;
+        margin-bottom: 8px;
+      }
 
-    input[type="number"] {
-      padding: 4px 6px;
-      font-size: 14px;
+      .card {
+        padding: 12px;
+      }
+
+      .card h2 {
+        font-size: 18px;
+      }
+
+      .info {
+        font-size: 12px;
+      }
+
+      .controls label {
+        font-size: 12px;
+      }
+
+      button {
+        font-size: 12px;
+        padding: 5px 8px;
+      }
+
+      input[type="number"] {
+        font-size: 12px;
+        width: 50px;
+      }
+
+      .frame-cell {
+        width: 30px;
+        height: 30px;
+        line-height: 30px;
+        font-size: 16px;
+      }
+
+      .player-label {
+        height: 30px;
+        font-size: 14px;
+        padding: 2px 4px;
+      }
+
+      th {
+        height: 30px;
+        font-size: 12px;
+        padding: 2px 4px;
+      }
     }
   </style>
 </head>
@@ -176,18 +249,20 @@
         &nbsp;&nbsp;예) XXXX → 1빙고, XXXXXX → 2빙고<br>
         ▷ 10프레임은 최대 3번까지 투구할 수 있으므로 <b>10-1, 10-2, 10-3</b>으로 나누어 표시합니다.<br>
         ▷ 빙고에 포함된 칸은 <b>빨간 테두리</b>로 표시됩니다.<br>
-        ▷ 배경의 s.png는 장식용이며, 클릭에 영향을 주지 않습니다.
+        ▷ 배경의 s.png 20개는 서로 부딪히면 튕겨나가며 돌아다니는 장식입니다.
       </p>
 
-      <div style="margin-bottom:8px;">
+      <div class="controls">
         <label>
           선수(줄) 수:
-          <input type="number" id="playerCountInput" value="4" min="1" max="10" style="width:60px;">
+          <input type="number" id="playerCountInput" value="4" min="1" max="10">
         </label>
         <button id="applySizeBtn">선수 수 변경</button>
       </div>
 
-      <table id="strikeTable"></table>
+      <div class="table-wrap">
+        <table id="strikeTable"></table>
+      </div>
 
       <div class="results">
         가로 빙고: <span class="num" id="hCount">0</span> 개<br>
@@ -201,40 +276,167 @@
   </div>
 
   <script>
-    /* ===== 배경에서 랜덤하게 움직이는 s.png 20개 ===== */
+    /* ===== 물리 효과로 움직이는 s.png 20개 (충돌 + 벽 바운스) ===== */
+
     const FLOATING_COUNT = 20;
+    const SIZE = 200;          // 이미지 크기(px)
+    const RADIUS = SIZE / 2;
+    const SPEED = 1.5;         // 기본 속도 (보통)
+    const MAX_SPEED = 4;       // 최대 속도 (폭주 방지)
 
-    function randomPosition() {
-      const top = Math.random() * 100;
-      const left = Math.random() * 100;
-      return { top, left };
+    const floaters = [];
+
+    function clampSpeed(f) {
+      const speed = Math.hypot(f.vx, f.vy);
+      if (speed > MAX_SPEED) {
+        const ratio = MAX_SPEED / speed;
+        f.vx *= ratio;
+        f.vy *= ratio;
+      }
     }
 
-    function moveToRandomPosition(el) {
-      const { top, left } = randomPosition();
-      el.style.top = top + 'vh';
-      el.style.left = left + 'vw';
+    function randomRange(min, max) {
+      return Math.random() * (max - min) + min;
     }
 
-    function createFloatingImages() {
+    function randomVelocity() {
+      const angle = Math.random() * Math.PI * 2;
+      return {
+        vx: Math.cos(angle) * SPEED,
+        vy: Math.sin(angle) * SPEED
+      };
+    }
+
+    function randomNonOverlappingPosition(existing) {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      let x, y;
+      let tries = 0;
+
+      while (true) {
+        x = randomRange(RADIUS, width - RADIUS);
+        y = randomRange(RADIUS, height - RADIUS);
+
+        let overlap = false;
+        for (const f of existing) {
+          const dx = f.x - x;
+          const dy = f.y - y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < SIZE) { // 서로 겹치지 않도록 (반지름 합 = SIZE)
+            overlap = true;
+            break;
+          }
+        }
+
+        if (!overlap || tries > 100) {
+          return { x, y };
+        }
+        tries++;
+      }
+    }
+
+    function createFloaters() {
       for (let i = 0; i < FLOATING_COUNT; i++) {
         const el = document.createElement('div');
         el.className = 'floating';
         document.body.appendChild(el);
 
-        // 첫 위치
-        moveToRandomPosition(el);
+        const pos = randomNonOverlappingPosition(floaters);
+        const vel = randomVelocity();
 
-        // 일정 시간마다 랜덤 위치로 이동
-        const intervalTime = 3000 + Math.random() * 3000; // 3~6초 사이
-        setInterval(() => {
-          moveToRandomPosition(el);
-        }, intervalTime);
+        const floater = {
+          el,
+          x: pos.x,
+          y: pos.y,
+          vx: vel.vx,
+          vy: vel.vy
+        };
+
+        clampSpeed(floater);
+        floaters.push(floater);
       }
     }
 
-    // 페이지 로드 시 생성
-    createFloatingImages();
+    function handleWallCollision(f) {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+
+      if (f.x - RADIUS <= 0 && f.vx < 0) {
+        f.vx *= -1;
+        f.x = RADIUS;
+      } else if (f.x + RADIUS >= width && f.vx > 0) {
+        f.vx *= -1;
+        f.x = width - RADIUS;
+      }
+
+      if (f.y - RADIUS <= 0 && f.vy < 0) {
+        f.vy *= -1;
+        f.y = RADIUS;
+      } else if (f.y + RADIUS >= height && f.vy > 0) {
+        f.vy *= -1;
+        f.y = height - RADIUS;
+      }
+    }
+
+    function handleFloaterCollisions() {
+      for (let i = 0; i < floaters.length; i++) {
+        for (let j = i + 1; j < floaters.length; j++) {
+          const a = floaters[i];
+          const b = floaters[j];
+
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          const dist = Math.hypot(dx, dy);
+          const minDist = SIZE;
+
+          if (dist > 0 && dist < minDist) {
+            const nx = dx / dist;
+            const ny = dy / dist;
+
+            const overlap = (minDist - dist) / 2;
+            a.x -= nx * overlap;
+            a.y -= ny * overlap;
+            b.x += nx * overlap;
+            b.y += ny * overlap;
+
+            const dvx = a.vx - b.vx;
+            const dvy = a.vy - b.vy;
+            const relVel = dvx * nx + dvy * ny;
+
+            if (relVel > 0) continue; // 이미 멀어지는 중이면 패스
+
+            const impulse = -2 * relVel / 2; // 질량 동일 가정
+
+            a.vx += -impulse * nx;
+            a.vy += -impulse * ny;
+            b.vx += impulse * nx;
+            b.vy += impulse * ny;
+
+            clampSpeed(a);
+            clampSpeed(b);
+          }
+        }
+      }
+    }
+
+    function updateFloaters() {
+      for (const f of floaters) {
+        f.x += f.vx;
+        f.y += f.vy;
+        handleWallCollision(f);
+        f.el.style.left = (f.x - RADIUS) + 'px';
+        f.el.style.top  = (f.y - RADIUS) + 'px';
+      }
+    }
+
+    function animateFloaters() {
+      handleFloaterCollisions();
+      updateFloaters();
+      requestAnimationFrame(animateFloaters);
+    }
+
+    createFloaters();
+    animateFloaters();
 
 
     /* ===== 스트라이크 빙고 로직 ===== */
@@ -486,7 +688,6 @@
     }
 
     function countAndDisplayBingos() {
-      // 빙고 표시 배열 초기화
       initBingoMap();
 
       const h  = countHorizontal(true);
@@ -501,7 +702,6 @@
       d2CountSpan.textContent = d2;
       totalCountSpan.textContent = total;
 
-      // 빙고 반영해서 화면 업데이트
       refreshTableView();
     }
 
